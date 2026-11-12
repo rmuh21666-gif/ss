@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gerbang Akses</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
+  <style>
+    :root { --teks:#E8EEF3; --redup:#8FA3BC; --garis:#27406A; --panel:rgba(16,30,56,.82); --cyan:#3DE0FF;
+      --hijau:#1FBF75; --merah:#E5484D; --kuning:#F2B84B; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; }
+    body { font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif; color:var(--teks); padding:28px 16px 40px;
+      background:radial-gradient(1100px 560px at 15% -10%,#17386b 0%,transparent 60%),
+                 radial-gradient(900px 480px at 100% 0%,#0d4552 0%,transparent 55%),#0A1120; }
+    body.ok { background:radial-gradient(1100px 560px at 50% -10%,#10704a 0%,transparent 62%),#07261b; }
+    body.gagal { background:radial-gradient(1100px 560px at 50% -10%,#8a2a31 0%,transparent 62%),#2a1014; }
+    .bungkus { max-width:880px; margin:0 auto; }
+
+    header { display:flex; align-items:center; gap:14px; margin-bottom:22px; }
+    header svg { flex:none; filter:drop-shadow(0 0 12px rgba(61,224,255,.5)); }
+    h1 { font-size:1.7rem; margin:0; letter-spacing:-.01em; }
+    .sub { margin:4px 0 0; color:var(--redup); font-size:.9rem; line-height:1.5; }
+
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    @media (max-width:760px) { .grid { grid-template-columns:1fr; } }
+    .kartu { background:var(--panel); border:1px solid var(--garis); border-radius:24px; padding:22px;
+      backdrop-filter:blur(8px); box-shadow:0 18px 40px rgba(0,0,0,.35); }
+    .kartu h2 { font-size:1.05rem; margin:0 0 14px; }
+
+    label { display:block; font-size:.85rem; margin-bottom:6px; color:var(--redup); }
+    input[type=password], input[type=text] { width:100%; color:var(--teks); background:#0A1424; border:2px solid var(--garis);
+      border-radius:14px; outline:none; font-family:inherit; }
+    input:focus-visible { border-color:var(--cyan); }
+    input#pin { font:600 1.8rem 'Sora',monospace; letter-spacing:.5em; text-align:center; padding:13px 10px; }
+    input#nama { font-size:.95rem; padding:11px 14px; }
+
+    #keypad { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:16px; }
+    #keypad button { aspect-ratio:1.25; font:600 1.45rem 'Sora',sans-serif; color:var(--teks);
+      background:linear-gradient(160deg,#2B4468,#1D3150); border:1px solid #3C5C8A; border-radius:50%/60%;
+      box-shadow:0 5px 0 #0C1628,0 8px 14px rgba(0,0,0,.4); cursor:pointer; transition:transform .08s,box-shadow .08s; }
+    #keypad button:active { transform:translateY(4px); box-shadow:0 1px 0 #0C1628,0 2px 6px rgba(0,0,0,.4); }
+    #keypad .fn { color:var(--kuning); font-size:1.2rem; }
+    button:focus-visible { outline:3px solid var(--kuning); outline-offset:2px; }
+
+    .aksi { width:100%; margin-top:14px; padding:14px; font:700 .98rem 'Sora',sans-serif; border:0; border-radius:14px; cursor:pointer; }
+    .aksi:disabled { opacity:.45; cursor:not-allowed; }
+    #kirim { color:#12202C; background:linear-gradient(135deg,#FFD36B,var(--kuning)); box-shadow:0 5px 0 #A8782A; }
+    #kirim:active:not(:disabled) { transform:translateY(4px); box-shadow:0 1px 0 #A8782A; }
+    #pindai { color:#04202A; background:linear-gradient(135deg,#8DF0FF,var(--cyan)); box-shadow:0 5px 0 #1788A0; }
+    #daftarBtn { color:var(--cyan); background:transparent; border:2px solid var(--cyan); }
+    #tutupBtn { color:var(--redup); background:transparent; border:1px solid var(--garis); display:none; }
+
+    /* Kamera */
+    .kamera { position:relative; aspect-ratio:1; border-radius:22px; overflow:hidden; background:#050A14;
+      border:2px solid var(--garis); display:grid; place-items:center; transition:border-color .3s,box-shadow .3s; }
+    .kamera.hidup { border-color:var(--cyan); box-shadow:0 0 28px rgba(61,224,255,.35); }
+    .kamera video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:none; }
+    .kamera.hidup video { display:block; }
+    .kosong-kamera { text-align:center; color:var(--redup); font-size:.82rem; padding:0 18px; }
+    .kosong-kamera svg { display:block; margin:0 auto 10px; opacity:.7; }
+    .kamera.hidup .kosong-kamera { display:none; }
+    .oval { position:absolute; inset:12% 24%; border:2px dashed rgba(61,224,255,.65); border-radius:50%; display:none; }
+    .kamera.hidup .oval { display:block; }
+    .garis { position:absolute; left:0; right:0; top:0; height:3px; display:none;
+      background:linear-gradient(90deg,transparent,var(--cyan),transparent); box-shadow:0 0 18px var(--cyan); }
+    .kamera.scan .garis { display:block; animation:sapu 1.6s ease-in-out infinite alternate; }
+    @keyframes sapu { to { top:calc(100% - 3px); } }
+    #overlay { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); pointer-events:none; }
+    .kamera:not(.hidup) #overlay { display:none; }
+    .pantau { display:flex; align-items:center; gap:8px; margin:12px 0 0; font-size:.8rem; color:var(--redup); }
+    .pantau i { width:9px; height:9px; border-radius:50%; background:var(--kuning); flex:none; }
+    .pantau.cari i { background:var(--cyan); }
+    .pantau.ada i { background:var(--hijau); box-shadow:0 0 8px var(--hijau); }
+    .pantau.mati i { background:var(--merah); }
+    .lencana.netral { background:var(--cyan); color:#04202A; }
+    .tugas { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 0; }
+    .chip { font-size:.78rem; padding:5px 11px; border-radius:999px; border:1px solid var(--garis); color:var(--redup); }
+    .chip.sekarang { border-color:var(--cyan); color:var(--cyan); }
+    .chip.selesai { background:var(--hijau); border-color:var(--hijau); color:#06251A; }
+    #infoWajah { margin:12px 0 0; font-size:.85rem; color:var(--redup); min-height:2.6em; line-height:1.45; }
+    .baris-nama { margin-top:12px; }
+
+    #status { margin-top:20px; padding:18px 20px; border-radius:18px; display:none; align-items:center; gap:16px; }
+    #status.tampil { display:flex; }
+    #status.ok { background:var(--hijau); color:#06251A; }
+    #status.gagal { background:var(--merah); color:#fff; animation:getar .4s; }
+    #status .ikon { font-size:2.2rem; line-height:1; }
+    #status strong { display:block; font-size:1.2rem; }
+    #status .ket { font-size:.88rem; opacity:.92; }
+    @keyframes getar { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+
+    #koneksi { margin:18px 0 0; font-size:.8rem; color:var(--redup); display:flex; align-items:center; gap:8px; }
+    #koneksi i { width:9px; height:9px; border-radius:50%; background:var(--kuning); display:inline-block; }
+    #koneksi.on i { background:var(--hijau); } #koneksi.off i { background:var(--merah); }
+
+    h3 { font-size:1rem; margin:22px 0 8px; }
+    ul#riwayat { list-style:none; margin:0; padding:0; }
+    ul#riwayat li { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0;
+      border-bottom:1px solid var(--garis); font-size:.82rem; }
+    .waktu { color:var(--redup); }
+    .lencana { padding:3px 10px; border-radius:999px; font-size:.76rem; font-weight:600; }
+    .lencana.ok { background:var(--hijau); color:#06251A; } .lencana.gagal { background:var(--merah); color:#fff; }
+    .kosong { color:var(--redup); font-size:.85rem; }
+
+    @media (prefers-reduced-motion:reduce) { .kamera.scan .garis,#status.gagal { animation:none; } #keypad button { transition:none; } }
+  </style>
+</head>
+<body>
+<div class="bungkus">
+  <header>
+    <svg width="46" height="46" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <path d="M24 4l16 6v12c0 10-7 18-16 22C15 40 8 32 8 22V10l16-6z" stroke="#3DE0FF" stroke-width="2.5" stroke-linejoin="round"/>
+      <circle cx="24" cy="21" r="4" stroke="#3DE0FF" stroke-width="2.5"/><path d="M17 32c1-4 4-6 7-6s6 2 7 6" stroke="#3DE0FF" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <h1>Gerbang Akses</h1>
+      <p class="sub">Masuk dengan PIN atau Face ID. Setiap percobaan tercatat otomatis di Google Sheets.</p>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="kartu" aria-label="Masuk dengan PIN">
+      <h2>Masuk dengan PIN</h2>
+      <label for="pin">PIN / Passcode</label>
+      <input id="pin" type="password" inputmode="none" autocomplete="off" maxlength="12" placeholder="••••••">
+      <div id="keypad">
+        <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+        <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+        <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+        <button type="button" class="fn" data-k="C" aria-label="Hapus semua">C</button>
+        <button type="button" data-k="0">0</button>
+        <button type="button" class="fn" data-k="B" aria-label="Hapus satu angka">⌫</button>
+      </div>
+      <button id="kirim" class="aksi" type="button">Buka akses</button>
+    </section>
+
+    <section class="kartu" aria-label="Masuk dengan Face ID">
+      <h2>Masuk dengan Face ID</h2>
+      <div class="kamera" id="kamera">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas><div class="oval"></div><div class="garis"></div>
+        <div class="kosong-kamera">
+          <svg width="56" height="56" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+            <path d="M6 16V9a3 3 0 013-3h7M32 6h7a3 3 0 013 3v7M42 32v7a3 3 0 01-3 3h-7M16 42H9a3 3 0 01-3-3v-7" stroke="#8FA3BC" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="18" cy="21" r="1.8" fill="#8FA3BC"/><circle cx="30" cy="21" r="1.8" fill="#8FA3BC"/>
+            <path d="M24 22v6h-2M18 33c2 2 10 2 12 0" stroke="#8FA3BC" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          Kamera laptop belum aktif
+        </div>
+      </div>
+      <div class="pantau" id="pantau"><i></i><span>Kamera belum aktif</span></div>
+      <p id="infoWajah">Kamera menyala otomatis dan mengawasi wajah. Tekan Pindai wajah untuk masuk; Anda akan diminta berkedip dan menoleh.</p>
+      <div class="tugas" id="tugas"></div>
+      <button id="pindai" class="aksi" type="button">Pindai wajah</button>
+      <button id="tutupBtn" class="aksi" type="button">Tutup kamera</button>
+      <div class="baris-nama">
+        <label for="nama">Pendaftaran wajah baru (setelah PIN benar)</label>
+        <input id="nama" type="text" maxlength="30" placeholder="Nama pemilik wajah" autocomplete="off">
+        <button id="daftarBtn" class="aksi" type="button" disabled>Daftarkan wajah</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="status" role="status" aria-live="polite">
+    <div class="ikon" id="ikon"></div>
+    <div><strong id="judul"></strong><span class="ket" id="ket"></span></div>
+  </div>
+
+  <p id="koneksi"><i></i><span>Memeriksa koneksi database…</span></p>
+  <h3>Aktivitas terakhir</h3>
+  <ul id="riwayat"><li class="kosong">Memuat…</li></ul>
+</div>
+
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+  var pin = $('pin'), tombol = $('kirim'), panel = $('status'), video = $('video'), kamera = $('kamera'), info = $('infoWajah');
+  var timer, stream = null, aktif = false, modelSiap = false, pinBenar = '';
+  var MODEL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
+
+  // Menggunakan google.script.run untuk komunikasi otomatis dengan Code.gs
+  function panggil(nama) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function (res, rej) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        var r = google.script.run.withSuccessHandler(res).withFailureHandler(rej);
+        r[nama].apply(r, args);
+      } else {
+        rej(new Error('Environment google.script.run tidak tersedia. Jalankan dari Google Apps Script.'));
+      }
+    });
+  }
+  function tunda(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  /* ---------- Status ---------- */
+  function tampilStatus(ok, judul, ket) {
+    var k = ok ? 'ok' : 'gagal';
+    panel.className = 'tampil ' + k; document.body.className = k;
+    $('ikon').textContent = ok ? '✓' : '✕';
+    $('judul').textContent = judul; $('ket').textContent = ket;
+    clearTimeout(timer); timer = setTimeout(reset, ok ? 45000 : 6000);
+  }
+  function reset() {
+    panel.className = ''; document.body.className = '';
+    $('daftarBtn').disabled = true; pinBenar = '';
+  }
+
+  /* ---------- Keypad & PIN ---------- */
+  $('keypad').addEventListener('click', function (e) {
+    var k = e.target.getAttribute('data-k'); if (!k) return;
+    if (k === 'C') pin.value = '';
+    else if (k === 'B') pin.value = pin.value.slice(0, -1);
+    else if (pin.value.length < 12) pin.value += k;
+  });
+  pin.addEventListener('keydown', function (e) { if (e.key === 'Enter') kirim(); });
+
+  function kirim() {
+    var nilai = pin.value.trim();
+    if (!nilai) { tampilStatus(false, 'PIN belum diisi', 'Ketuk angka lalu tekan Buka akses.'); return; }
+    tombol.disabled = true; tombol.textContent = 'Memeriksa…';
+    panggil('prosesPin', nilai, ambilFoto(), jumlahWajah > 0).then(function (h) {
+      if (h.error) { tampilStatus(false, h.terkunci ? 'Terkunci sementara' : 'Terjadi kesalahan', h.error); return; }
+      if (h.ok) {
+        pinBenar = nilai; $('daftarBtn').disabled = false;
+        tampilStatus(true, 'Akses diterima', 'Dicatat pada ' + h.waktu + '. Anda bisa mendaftarkan wajah.');
+      } else {
+        tampilStatus(false, 'Akses ditolak', 'PIN salah. Dicatat pada ' + h.waktu);
+      }
+      pin.value = ''; muatRiwayat(); cekKoneksi();
+    }).catch(function () {
+      tampilStatus(false, 'Gagal terhubung', 'Periksa koneksi lalu coba lagi.');
+    }).then(function () { tombol.disabled = false; tombol.textContent = 'Buka akses'; });
+  }
+  tombol.addEventListener('click', kirim);
+
+  /* ---------- Face ID ---------- */
+  function muatModel() {
+    if (modelSiap) return Promise.resolve();
+    return Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL)
+    ]).then(function () { modelSiap = true; });
+  }
+
+  var sibuk = false, menyalakan = false, memantau = false, jumlahWajah = 0, stabil = 0, terakhirFoto = 0;
+
+  function setPantau(kelas, teks) {
+    var el = $('pantau'); el.className = 'pantau ' + kelas; el.querySelector('span').textContent = teks;
+  }
+
+  async function pastikanKamera() {
+    if (aktif) return;
+    while (menyalakan) await tunda(200);
+    if (aktif) return;
+    menyalakan = true;
+    try {
+      if (typeof faceapi === 'undefined') throw new Error('Pustaka face-api.js gagal dimuat.');
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('Kamera tidak tersedia.');
+      setPantau('tunggu', 'Menyiapkan kamera dan model wajah…');
+      await muatModel();
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 640 } });
+      } catch (e) {
+        throw new Error('Kamera diblokir. Harap izinkan akses kamera di peramban Anda.');
+      }
+      video.srcObject = stream; aktif = true;
+      await new Promise(function (r) { video.onloadedmetadata = r; });
+      $('overlay').width = video.videoWidth; $('overlay').height = video.videoHeight;
+      kamera.classList.add('hidup'); $('tutupBtn').style.display = 'block';
+      setPantau('cari', 'Kamera aktif. Mencari wajah…');
+      pantau();
+    } catch (e) { setPantau('mati', e.message); throw e; }
+    finally { menyalakan = false; }
+  }
+
+  function tutupKamera() {
+    aktif = false; jumlahWajah = 0; stabil = 0;
+    kamera.classList.remove('hidup', 'scan'); $('tutupBtn').style.display = 'none';
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    video.srcObject = null; setPantau('mati', 'Kamera dimatikan');
+  }
+  function selesaiPindai() { kamera.classList.remove('scan'); info.textContent = ''; $('tugas').innerHTML = ''; }
+
+  function ambilFoto() {
+    if (!aktif || !video.videoWidth) return null;
+    var w = 360, h = Math.round(w * video.videoHeight / video.videoWidth), c = document.createElement('canvas');
+    c.width = w; c.height = h; c.getContext('2d').drawImage(video, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', 0.7);
+  }
+
+  async function pantau() {
+    if (memantau) return;
+    memantau = true;
+    var cv = $('overlay'), ctx = cv.getContext('2d'), opsi = opsiDeteksi();
+    while (aktif) {
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      if (sibuk) { await tunda(300); continue; }
+      var dets = await faceapi.detectAllFaces(video, opsi);
+      ctx.strokeStyle = '#3DE0FF'; ctx.lineWidth = 3;
+      dets.forEach(function (d) { ctx.strokeRect(d.box.x, d.box.y, d.box.width, d.box.height); });
+      jumlahWajah = dets.length;
+      if (jumlahWajah) {
+        setPantau('ada', jumlahWajah + ' wajah terdeteksi');
+        if (++stabil >= 3 && Date.now() - terakhirFoto > 30000) { terakhirFoto = Date.now(); kirimPantauan(); }
+      } else { stabil = 0; setPantau('cari', 'Tidak ada wajah di kamera'); }
+      await tunda(350);
+    }
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    memantau = false;
+  }
+  function kirimPantauan() {
+    var foto = ambilFoto(); if (!foto) return;
+    panggil('pantauWajah', foto, jumlahWajah).then(function (r) {
+      if (r && r.tercatat) { muatRiwayat(); cekKoneksi(); }
+    }).catch(function () {});
+  }
+
+  $('tutupBtn').addEventListener('click', function () { tutupKamera(); info.textContent = 'Kamera ditutup.'; });
+
+  var BATAS_TUGAS = 15000;
+  function opsiDeteksi() { return new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }); }
+  function rasioYaw(p) { return (p[30].x - p[0].x) / (p[16].x - p[0].x); }
+  function earMata(p, a) {
+    function d(i, j) { return Math.hypot(p[i].x - p[j].x, p[i].y - p[j].y); }
+    return (d(a + 1, a + 5) + d(a + 2, a + 4)) / (2 * d(a, a + 3));
+  }
+
+  async function ambilFrontal(n, jeda) {
+    var hasil = [], coba = 0;
+    kamera.classList.add('scan');
+    while (aktif && hasil.length < n) {
+      var d = await faceapi.detectSingleFace(video, opsiDeteksi()).withFaceLandmarks(true).withFaceDescriptor();
+      if (d && Math.abs(rasioYaw(d.landmarks.positions) - 0.5) < 0.12) { hasil.push(Array.from(d.descriptor)); await tunda(jeda || 350); }
+      else { info.textContent = 'Hadap lurus ke kamera di dalam oval.'; await tunda(150); }
+      if (++coba > 120) throw new Error('Wajah tidak terdeteksi lurus ke kamera.');
+    }
+    kamera.classList.remove('scan');
+    if (!aktif) throw new Error('Pemindaian dibatalkan.');
+    return hasil;
+  }
+
+  function tampilTugas(urutan, selesai) {
+    var NAMA = { KEDIP: 'Kedipkan mata 2×', TOLEH: 'Toleh ke samping lalu kembali' };
+    var el = $('tugas'); el.innerHTML = '';
+    urutan.forEach(function (t, i) {
+      var s = document.createElement('span');
+      s.className = 'chip' + (i < selesai ? ' selesai' : i === selesai ? ' sekarang' : '');
+      s.textContent = (i < selesai ? '✓ ' : (i + 1) + '. ') + NAMA[t];
+      el.appendChild(s);
+    });
+  }
+  async function tungguKedip(target) {
+    var n = 0, tutup = false, dasar = 0, mulai = Date.now();
+    while (aktif) {
+      if (Date.now() - mulai > BATAS_TUGAS) throw new Error('Waktu habis.');
+      var d = await faceapi.detectSingleFace(video, opsiDeteksi()).withFaceLandmarks(true);
+      if (d) {
+        var p = d.landmarks.positions, e = (earMata(p, 36) + earMata(p, 42)) / 2;
+        dasar = Math.max(e, dasar * 0.995);
+        if (!tutup && e < dasar * 0.72) tutup = true;
+        else if (tutup && e > dasar * 0.88) { tutup = false; if (++n >= target) return; }
+      }
+      await tunda(10);
+    }
+    throw new Error('Pemindaian dibatalkan.');
+  }
+  async function tungguToleh() {
+    var menoleh = false, mulai = Date.now();
+    while (aktif) {
+      if (Date.now() - mulai > BATAS_TUGAS) throw new Error('Waktu habis.');
+      var d = await faceapi.detectSingleFace(video, opsiDeteksi()).withFaceLandmarks(true);
+      if (d) {
+        var dev = Math.abs(rasioYaw(d.landmarks.positions) - 0.5);
+        if (!menoleh && dev > 0.14) menoleh = true;
+        else if (menoleh && dev < 0.08) return;
+      }
+      await tunda(10);
+    }
+    throw new Error('Pemindaian dibatalkan.');
+  }
+  async function jalankanTantangan(urutan) {
+    for (var i = 0; i < urutan.length; i++) {
+      tampilTugas(urutan, i);
+      info.textContent = urutan[i] === 'KEDIP' ? 'Kedipkan mata Anda 2 kali.' : 'Toleh pelan ke samping, lalu kembali.';
+      await (urutan[i] === 'KEDIP' ? tungguKedip(2) : tungguToleh());
+    }
+    tampilTugas(urutan, urutan.length);
+  }
+
+  function gagalFace(e) {
+    selesaiPindai();
+    tampilStatus(false, 'Face ID tidak bisa dipakai', e.message || 'Terjadi kesalahan.');
+  }
+
+  $('pindai').addEventListener('click', async function () {
+    if (sibuk) return;
+    var b = $('pindai'); b.disabled = true; sibuk = true;
+    try {
+      var st = await panggil('statusWajah');
+      if (!st.jumlah) { tampilStatus(false, 'Belum ada wajah terdaftar', 'Masuk dengan PIN dulu.'); return; }
+      var t = await panggil('mintaTantangan');
+      if (t.error) { tampilStatus(false, t.terkunci ? 'Terkunci' : 'Face ID gagal', t.error); return; }
+      await pastikanKamera();
+      info.textContent = 'Hadap lurus ke kamera.';
+      var awal = await ambilFrontal(1);
+      var foto = ambilFoto();
+      await jalankanTantangan(t.urutan);
+      info.textContent = 'Tahan sebentar…';
+      var akhir = await ambilFrontal(2);
+      info.textContent = 'Memverifikasi…';
+      var h = await panggil('loginWajah', awal.concat(akhir), t.id, foto);
+      selesaiPindai();
+      if (h.error) tampilStatus(false, h.terkunci ? 'Terkunci' : 'Face ID gagal', h.error);
+      else if (h.ok) tampilStatus(true, 'Akses diterima', 'Selamat datang, ' + h.nama + '.');
+      else tampilStatus(false, 'Akses ditolak', 'Wajah tidak dikenali.');
+      muatRiwayat(); cekKoneksi();
+    } catch (e) { gagalFace(e); } finally { b.disabled = false; sibuk = false; }
+  });
+
+  $('daftarBtn').addEventListener('click', async function () {
+    if (sibuk || !pinBenar) return;
+    var nama = $('nama').value.trim();
+    if (!nama) { tampilStatus(false, 'Nama belum diisi', 'Isi nama pemilik wajah.'); $('nama').focus(); return; }
+    var b = $('daftarBtn'); b.disabled = true; sibuk = true;
+    try {
+      await pastikanKamera();
+      info.textContent = 'Pindai 5 kali…';
+      var sampel = await ambilFrontal(5, 600);
+      var h = await panggil('daftarWajah', pinBenar, nama, sampel);
+      selesaiPindai();
+      if (h.error) tampilStatus(false, h.terkunci ? 'Terkunci' : 'Gagal', h.error);
+      else { tampilStatus(true, 'Wajah terdaftar', h.nama + ' berhasil didaftarkan.'); $('nama').value = ''; pinBenar = ''; return; }
+      b.disabled = false;
+    } catch (e) { gagalFace(e); b.disabled = !pinBenar; }
+    finally { sibuk = false; muatRiwayat(); cekKoneksi(); }
+  });
+
+  function muatRiwayat() {
+    panggil('ambilLogTerakhir', 5).then(function (data) {
+      var ul = $('riwayat'); ul.innerHTML = '';
+      if (!data.length) { ul.innerHTML = '<li class="kosong">Belum ada aktivitas.</li>'; return; }
+      data.forEach(function (d) {
+        var li = document.createElement('li'), ok = d.status === 'DITERIMA', netral = d.status === 'WAJAH TERDETEKSI';
+        li.innerHTML = '<span class="waktu"></span><span></span><span class="lencana ' + (ok ? 'ok' : netral ? 'netral' : 'gagal') + '"></span>';
+        li.children[0].textContent = d.waktu; li.children[1].textContent = d.passcode + (d.foto ? ' 📷' : '');
+        li.children[2].textContent = ok ? 'Diterima' : netral ? 'Terpantau' : 'Ditolak';
+        ul.appendChild(li);
+      });
+    });
+  }
+  function cekKoneksi() {
+    var el = $('koneksi');
+    panggil('cekKoneksi').then(function (r) {
+      el.className = r.terhubung ? 'on' : 'off';
+      el.querySelector('span').textContent = r.terhubung
+        ? 'Terhubung ke Google Sheets (' + r.nama + ') · ' + r.total + ' catatan · ' + r.wajah + ' wajah terdaftar'
+        : 'Database belum terhubung: ' + r.pesan;
+    }).catch(function () { el.className = 'off'; el.querySelector('span').textContent = 'Database belum terhubung.'; });
+  }
+  muatRiwayat(); cekKoneksi();
+  pastikanKamera().catch(function () {});
+</script>
+</body>
+</html>
